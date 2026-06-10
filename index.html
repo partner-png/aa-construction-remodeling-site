@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=meeting-updates">
+    <link rel="stylesheet" href="styles.css?v=gallery-modal">
   </head>
   <body>
     <header class="site-header" data-header>
@@ -172,13 +172,37 @@
             <span>Room<br>Additions</span>
           </button>
         </div>
-        <div class="gallery-feed" aria-live="polite">
-          <div class="gallery-feed-header">
-            <p class="card-kicker">Instagram Gallery</p>
-            <button class="gallery-filter-link is-active" type="button" data-gallery-filter="all">Show All</button>
+        <div class="gallery-launcher">
+          <div>
+            <p class="card-kicker">Project Gallery</p>
             <p data-gallery-status>Loading gallery media...</p>
           </div>
-          <div class="instagram-gallery" data-gallery-grid></div>
+          <button class="gallery-filter-link is-active" type="button" data-gallery-filter="all" aria-haspopup="dialog">Show All</button>
+        </div>
+        <div class="gallery-modal" data-gallery-modal aria-hidden="true">
+          <button class="gallery-modal-backdrop" type="button" aria-label="Close gallery" data-gallery-close></button>
+          <section class="gallery-modal-panel" role="dialog" aria-modal="true" aria-labelledby="gallery-modal-title">
+            <div class="gallery-modal-header">
+              <div>
+                <p class="card-kicker">Project Gallery</p>
+                <h2 id="gallery-modal-title" data-gallery-title>All Projects</h2>
+                <p data-gallery-status>Loading gallery media...</p>
+              </div>
+              <button class="gallery-modal-close" type="button" aria-label="Close gallery" data-gallery-close>
+                <span aria-hidden="true">x</span>
+              </button>
+            </div>
+            <div class="gallery-modal-filters" aria-label="Gallery filters">
+              <button class="gallery-filter-link is-active" type="button" data-gallery-filter="all">All</button>
+              <button class="gallery-filter-link" type="button" data-gallery-filter="kitchen">Kitchen</button>
+              <button class="gallery-filter-link" type="button" data-gallery-filter="bathroom">Bathroom</button>
+              <button class="gallery-filter-link" type="button" data-gallery-filter="interior">Interior</button>
+              <button class="gallery-filter-link" type="button" data-gallery-filter="exterior">Exterior</button>
+              <button class="gallery-filter-link" type="button" data-gallery-filter="new-builds">New Builds</button>
+              <button class="gallery-filter-link" type="button" data-gallery-filter="additions">Additions</button>
+            </div>
+            <div class="instagram-gallery gallery-modal-grid" data-gallery-grid></div>
+          </section>
         </div>
       </section>
 
@@ -306,6 +330,6 @@
       </div>
     </footer>
 
-    <script src="script.js?v=meeting-updates"></script>
+    <script src="script.js?v=gallery-modal"></script>
   </body>
 </html>
