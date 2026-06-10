@@ -3,7 +3,10 @@ const nav = document.querySelector("[data-nav]");
 const contactForm = document.querySelector("[data-contact-form]");
 const formNote = document.querySelector("[data-form-note]");
 const galleryGrid = document.querySelector("[data-gallery-grid]");
-const galleryStatus = document.querySelector("[data-gallery-status]");
+const galleryStatusNodes = [...document.querySelectorAll("[data-gallery-status]")];
+const galleryTitle = document.querySelector("[data-gallery-title]");
+const galleryModal = document.querySelector("[data-gallery-modal]");
+const galleryCloseButtons = [...document.querySelectorAll("[data-gallery-close]")];
 const galleryFilterButtons = [...document.querySelectorAll("[data-gallery-filter]")];
 
 const fallbackGalleryItems = [
@@ -65,6 +68,7 @@ const fallbackGalleryItems = [
 
 let galleryItems = fallbackGalleryItems;
 let activeGalleryFilter = "all";
+let galleryLastFocus = null;
 
 if (navToggle && nav) {
   navToggle.addEventListener("click", () => {
@@ -145,66 +149,149 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function renderGallery() {
-  if (!galleryGrid) return;
+function getFilteredGalleryItems() {
+  return activeGalleryFilter === "all"
+    ? galleryItems
+    : galleryItems.filter((item) => classifyGalleryItem(item) === activeGalleryFilter);
+}
 
-  const filteredItems =
+function syncGalleryFilterButtons() {
+  galleryFilterButtons.forEach((button) => {
+    const isActive = (button.dataset.galleryFilter || "all") === activeGalleryFilter;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+}
+
+function updateGallerySummary(filteredItems) {
+  const label =
     activeGalleryFilter === "all"
-      ? galleryItems
-      : galleryItems.filter((item) => classifyGalleryItem(item) === activeGalleryFilter);
+      ? "project media items"
+      : `${prettyCategory(activeGalleryFilter).toLowerCase()} items`;
+  const summary = `${filteredItems.length} ${label} loaded`;
 
-  galleryGrid.innerHTML = filteredItems
-    .map((item) => {
-      const category = classifyGalleryItem(item);
-      const mediaType = (item.mediaType || item.media_type || "IMAGE").toUpperCase();
-      const source = item.src || item.mediaUrl || item.media_url || item.thumbnailUrl || item.thumbnail_url;
-      const poster = item.thumbnailUrl || item.thumbnail_url || source;
-      const title = item.title || `${prettyCategory(category)} Project`;
-      const caption = item.caption || "Latest A&A project media from Instagram.";
-      const permalink = item.permalink || "https://www.instagram.com/aaconstruction.inc/";
-      const media =
-        mediaType === "VIDEO"
-          ? `<video muted playsinline preload="metadata" poster="${escapeHtml(poster)}"><source src="${escapeHtml(source)}"></video>`
-          : `<img src="${escapeHtml(source)}" alt="${escapeHtml(title)}">`;
+  galleryStatusNodes.forEach((status) => {
+    status.textContent = summary;
+  });
 
-      return `
-        <article class="gallery-card" data-category="${escapeHtml(category)}">
-          <a href="${escapeHtml(permalink)}" target="_blank" rel="noreferrer">
-            ${media}
-            <div class="gallery-card-copy">
-              <div class="gallery-meta">
-                <span class="media-chip">${escapeHtml(prettyCategory(category))}</span>
-                ${mediaType === "VIDEO" ? '<span class="media-chip video">Video</span>' : ""}
-              </div>
-              <h3>${escapeHtml(title)}</h3>
-              <p>${escapeHtml(caption)}</p>
-            </div>
-          </a>
-        </article>
-      `;
-    })
-    .join("");
+  if (galleryTitle) {
+    galleryTitle.textContent =
+      activeGalleryFilter === "all" ? "All Projects" : `${prettyCategory(activeGalleryFilter)} Projects`;
+  }
+}
 
-  if (galleryStatus) {
-    const label =
-      activeGalleryFilter === "all"
-        ? "project media items"
-        : `${prettyCategory(activeGalleryFilter).toLowerCase()} items`;
-    galleryStatus.textContent = `${filteredItems.length} ${label} loaded`;
+function renderGallery() {
+  const filteredItems = getFilteredGalleryItems();
+
+  if (galleryGrid) {
+    galleryGrid.innerHTML = filteredItems.length
+      ? filteredItems
+          .map((item) => {
+            const category = classifyGalleryItem(item);
+            const mediaType = (item.mediaType || item.media_type || "IMAGE").toUpperCase();
+            const source = item.src || item.mediaUrl || item.media_url || item.thumbnailUrl || item.thumbnail_url;
+            const poster = item.thumbnailUrl || item.thumbnail_url || source;
+            const title = item.title || `${prettyCategory(category)} Project`;
+            const caption = item.caption || "Latest A&A project media.";
+            const media =
+              mediaType === "VIDEO"
+                ? `<video controls playsinline preload="metadata" poster="${escapeHtml(poster)}"><source src="${escapeHtml(source)}"></video>`
+                : `<img src="${escapeHtml(source)}" alt="${escapeHtml(title)}">`;
+
+            return `
+              <article class="gallery-card" data-category="${escapeHtml(category)}">
+                <div class="gallery-card-inner">
+                  ${media}
+                  <div class="gallery-card-copy">
+                    <div class="gallery-meta">
+                      <span class="media-chip">${escapeHtml(prettyCategory(category))}</span>
+                      ${mediaType === "VIDEO" ? '<span class="media-chip video">Video</span>' : ""}
+                    </div>
+                    <h3>${escapeHtml(title)}</h3>
+                    <p>${escapeHtml(caption)}</p>
+                  </div>
+                </div>
+              </article>
+            `;
+          })
+          .join("")
+      : `<p class="gallery-empty">No ${escapeHtml(prettyCategory(activeGalleryFilter).toLowerCase())} media is loaded yet.</p>`;
+  }
+
+  updateGallerySummary(filteredItems);
+}
+
+function setActiveGalleryFilter(filter) {
+  activeGalleryFilter = filter || "all";
+  syncGalleryFilterButtons();
+  renderGallery();
+}
+
+function openGallery(filter = activeGalleryFilter) {
+  if (!galleryModal) return;
+
+  const wasOpen = galleryModal.classList.contains("is-open");
+  galleryLastFocus = wasOpen ? galleryLastFocus : document.activeElement;
+  setActiveGalleryFilter(filter);
+  galleryModal.classList.add("is-open");
+  galleryModal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("gallery-modal-open");
+
+  if (!wasOpen) {
+    const closeButton = galleryModal.querySelector("[data-gallery-close]:not(.gallery-modal-backdrop)");
+    closeButton?.focus({ preventScroll: true });
+  }
+}
+
+function closeGallery() {
+  if (!galleryModal || !galleryModal.classList.contains("is-open")) return;
+
+  galleryModal.classList.remove("is-open");
+  galleryModal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("gallery-modal-open");
+  galleryModal.querySelectorAll("video").forEach((video) => video.pause());
+
+  if (galleryLastFocus instanceof HTMLElement) {
+    galleryLastFocus.focus({ preventScroll: true });
+  }
+}
+
+function keepGalleryFocus(event) {
+  if (!galleryModal?.classList.contains("is-open") || event.key !== "Tab") return;
+
+  const focusable = [...galleryModal.querySelectorAll("button, video, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])")]
+    .filter((element) => !element.hasAttribute("disabled") && element.offsetParent !== null);
+
+  if (!focusable.length) return;
+
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
   }
 }
 
 galleryFilterButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    activeGalleryFilter = button.dataset.galleryFilter || "all";
-    galleryFilterButtons.forEach((item) => item.classList.toggle("is-active", item === button));
-    renderGallery();
+    openGallery(button.dataset.galleryFilter || "all");
   });
 });
 
-async function loadGalleryFeed() {
-  if (!galleryGrid) return;
+galleryCloseButtons.forEach((button) => {
+  button.addEventListener("click", closeGallery);
+});
 
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeGallery();
+  keepGalleryFocus(event);
+});
+
+async function loadGalleryFeed() {
   try {
     const response = await fetch("data/gallery-feed.json", { cache: "no-store" });
     if (!response.ok) throw new Error("Gallery feed unavailable");
@@ -217,4 +304,5 @@ async function loadGalleryFeed() {
   renderGallery();
 }
 
+syncGalleryFilterButtons();
 loadGalleryFeed();
